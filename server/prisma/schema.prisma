@@ -1,0 +1,111 @@
+// server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Models adjusted for SQLite (Enums removed, Decimal changed to Float)
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  fullName      String?
+  role          String    @default("PUBLIC") // PUBLIC, SUBSCRIBER, ADMIN
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  subscription  Subscription?
+  scores        Score[]
+  charitySelection UserCharity?
+  drawEntries   DrawEntry[]
+  winners       Winner[]
+}
+
+model Subscription {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id])
+  status           String   @default("LAPSED") // ACTIVE, CANCELLED, LAPSED
+  planType         String   
+  currentPeriodEnd DateTime
+  cancelAtPeriodEnd Boolean  @default(false)
+}
+
+model Score {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value     Int      
+  date      DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model Charity {
+  id            String        @id @default(uuid())
+  name          String
+  description   String        
+  imageUrl      String?
+  websiteUrl    String?
+  isFeatured    Boolean       @default(false)
+  selections    UserCharity[]
+}
+
+model UserCharity {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  charityId           String
+  contributionPercent Int      @default(10)
+  user                User     @relation(fields: [userId], references: [id])
+  charity             Charity  @relation(fields: [charityId], references: [id])
+}
+
+model Draw {
+  id              String      @id @default(uuid())
+  drawDate        DateTime
+  status          String      @default("SCHEDULED") // SCHEDULED, SIMULATED, PUBLISHED
+  winningNumbers  String      // Store as JSON string: "[1,2,3,4,5]"
+  totalPrizePool  Float       
+  entries         DrawEntry[]
+  winners         Winner[]
+}
+
+model DrawEntry {
+  id        String   @id @default(uuid())
+  drawId    String
+  userId    String
+  numbers   String   // Store as JSON string: "[1,2,3,4,5]"
+  draw      Draw     @relation(fields: [drawId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Winner {
+  id            String       @id @default(uuid())
+  drawId        String
+  userId        String
+  tier          Int          
+  prizeAmount   Float      
+  payoutStatus  String       @default("PENDING") // PENDING, PAID
+  proofUrl      String?      
+  draw          Draw         @relation(fields: [drawId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+}
+model Booking {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      DateTime
+  timeSlot  String   // e.g., "08:00 AM"
+  course    String   // e.g., "Emerald Greens CC"
+  status    String   @default("CONFIRMED")
+  createdAt DateTime @default(now())
+
+  @@unique([date, timeSlot]) // PRD Logic: No double-booking same slot
+}

@@ -1,0 +1,4 @@
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres"
+JWT_SECRET="hero_secret_vault_99"
+STRIPE_SECRET_KEY="sk_test_..."
+CLIENT_URL="http://localhost:5173"
