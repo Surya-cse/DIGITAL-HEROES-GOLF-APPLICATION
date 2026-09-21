@@ -1,87 +1,235 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Trophy, Mail, Lock, User as UserIcon, Loader2, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import axiosInstance from '../api/axiosInstance';
-import toast from 'react-hot-toast';
+import {
+  FormEvent,
+  useState,
+} from "react";
 
-const Login: React.FC = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  useAuth,
+} from "../context/AuthContext";
+
+import axiosInstance from "../api/axiosInstance";
+
+export default function Login() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '', fullName: '' });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const { login } = useAuth();
+
+  const [isLogin, setIsLogin] =
+    useState(true);
+
+  const [fullName, setFullName] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const handleSubmit = async (
+    e: FormEvent
+  ) => {
     e.preventDefault();
+
+    setError("");
+
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
+    if (!isLogin && !fullName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError(
+        "Password must be at least 6 characters."
+      );
+      return;
+    }
+
     setLoading(true);
+
     try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const res = await axiosInstance.post(endpoint, form);
-      if (isLogin) {
-        login(res.data.token, res.data.user);
-        toast.success(`Welcome back, ${res.data.user.fullName}!`);
-        navigate('/dashboard');
-      } else {
-        setIsLogin(true);
-        toast.success("Account Created! Please sign in.");
+      const endpoint = isLogin
+        ? "/auth/login"
+        : "/auth/register";
+
+      const requestData = isLogin
+        ? {
+            email: email.trim(),
+            password,
+          }
+        : {
+            fullName: fullName.trim(),
+            email: email.trim(),
+            password,
+          };
+
+      const response =
+        await axiosInstance.post(
+          endpoint,
+          requestData
+        );
+
+      console.log(
+        "Authentication response:",
+        response.data
+      );
+
+      const token =
+        response.data?.token;
+
+      const user =
+        response.data?.user;
+
+      if (!token || !user) {
+        throw new Error(
+          "Authentication succeeded but the server did not return a token and user."
+        );
       }
+
+      // Save authentication
+      login(token, user);
+
+      // Go directly to dashboard
+      navigate("/dashboard", {
+        replace: true,
+      });
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Authentication Failed");
-    } finally { setLoading(false); }
+      console.error(
+        "Authentication error:",
+        err
+      );
+
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Authentication failed. Please try again.";
+
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-brand-slate flex items-center justify-center p-6">
-      <div className="w-full max-w-[440px] bg-white rounded-[2.5rem] shadow-premium p-10 border border-slate-100">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-brand-green rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Trophy className="text-white" size={32} />
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-            {isLogin ? 'Welcome Back' : 'Create Your Account'}
-          </h2>
-          <p className="text-slate-400 text-sm font-medium mt-2">
-            {isLogin ? 'Sign in to manage your tee times.' : 'Join Digital Heroes and make a difference.'}
-          </p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-full max-w-md p-6">
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <h1 className="text-3xl font-bold mb-2">
+          {isLogin
+            ? "Welcome Back"
+            : "Create Account"}
+        </h1>
+
+        <p className="mb-6 text-gray-500">
+          {isLogin
+            ? "Sign in to continue to Digital Heroes."
+            : "Create your Digital Heroes account."}
+        </p>
+
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+        >
+
           {!isLogin && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-              <input type="text" placeholder="Enter your full name" required
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-brand-mint font-medium"
-                onChange={e => setForm({...form, fullName: e.target.value})} />
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={fullName}
+              onChange={(e) =>
+                setFullName(e.target.value)
+              }
+              className="w-full border rounded-lg px-4 py-3"
+              autoComplete="name"
+            />
+          )}
+
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
+            className="w-full border rounded-lg px-4 py-3"
+            autoComplete="email"
+            required
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
+            className="w-full border rounded-lg px-4 py-3"
+            autoComplete={
+              isLogin
+                ? "current-password"
+                : "new-password"
+            }
+            required
+          />
+
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-red-600 text-sm">
+              {error}
             </div>
           )}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-            <input type="email" placeholder="you@example.com" required
-              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-brand-mint font-medium"
-              onChange={e => setForm({...form, email: e.target.value})} />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
-            <input type="password" placeholder="••••••••" required
-              className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-brand-mint font-medium"
-              onChange={e => setForm({...form, password: e.target.value})} />
-          </div>
 
-          <button disabled={loading} className="w-full bg-brand-green text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-900 shadow-xl shadow-emerald-100 transition-all">
-            {loading ? <Loader2 className="animate-spin mx-auto" /> : isLogin ? 'Sign In' : 'Sign Up'}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg px-4 py-3 font-semibold bg-black text-white disabled:opacity-50"
+          >
+            {loading
+              ? isLogin
+                ? "Signing in..."
+                : "Creating account..."
+              : isLogin
+              ? "Sign In"
+              : "Create Account"}
           </button>
         </form>
 
-        <p className="mt-8 text-center text-slate-500 font-medium">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}
-          <button onClick={() => setIsLogin(!isLogin)} className="ml-2 text-brand-mint font-black hover:underline">
-            {isLogin ? 'Sign up' : 'Sign in'}
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError("");
+            }}
+            className="text-blue-600 hover:underline"
+          >
+            {isLogin
+              ? "Don't have an account? Sign Up"
+              : "Already have an account? Sign In"}
           </button>
-        </p>
+        </div>
+
       </div>
     </div>
   );
-};
-
-export default Login;
+}

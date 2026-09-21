@@ -1,67 +1,176 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
-// Import Layouts
-import MainLayout from './layouts/MainLayout';
-import AdminLayout from './layouts/AdminLayout';
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
-// Import Pages
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import Charities from './pages/Charities';
-import DrawMgmt from './pages/admin/DrawMgmt';
-import UserMgmt from './pages/admin/UserMgmt';
-import BookSlot from './pages/BookSlot';
+// Layouts
+import MainLayout from "./layouts/MainLayout";
+import AdminLayout from "./layouts/AdminLayout";
 
-// Security Wrapper for Member-only pages
-function SubscriberRoute({ children }: { children: JSX.Element; }) {
+// Pages
+import Landing from "./pages/Landing";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+import Charities from "./pages/Charities";
+import DrawMgmt from "./pages/admin/DrawMgmt";
+import UserMgmt from "./pages/admin/UserMgmt";
+
+// Protected subscriber route
+const SubscriberRoute = ({
+  children,
+}: {
+  children: JSX.Element;
+}) => {
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="flex h-screen items-center justify-center font-bold">Verifying Session...</div>;
-  return user ? children : <Navigate to="/login" />;
-}
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center font-bold">
+        Verifying Session...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+// Protected admin route
+const AdminRoute = ({
+  children,
+}: {
+  children: JSX.Element;
+}) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center font-bold">
+        Verifying Session...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== "ADMIN") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public Routes - Wrapped in MainLayout */}
-          <Route path="/" element={<MainLayout><Landing /></MainLayout>} />
-          <Route path="/login" element={<MainLayout><Login /></MainLayout>} />
-          <Route path="/charities" element={<MainLayout><Charities /></MainLayout>} />
-          <Route path="/book" element={<MainLayout><BookSlot /></MainLayout>} />
-          
-          {/* Subscriber Routes - Protected */}
-          <Route 
-            path="/dashboard" 
+
+          {/* =========================
+              PUBLIC ROUTES
+          ========================= */}
+
+          <Route
+            path="/"
             element={
-              <SubscriberRoute>
-                <MainLayout><Dashboard /></MainLayout>
-              </SubscriberRoute>
-            } 
-          />
-          
-          {/* Admin Routes - Protected by AdminLayout */}
-          <Route 
-            path="/admin/dashboard" 
-            element={
-              <AdminLayout>
-                <div className="text-2xl font-black">Admin Overview Content</div>
-              </AdminLayout>
-            } 
-          />
-          <Route 
-            path="/admin/draws" 
-            element={<AdminLayout><DrawMgmt /></AdminLayout>} 
-          />
-          <Route 
-            path="/admin/users" 
-            element={<AdminLayout><UserMgmt /></AdminLayout>} 
+              <MainLayout>
+                <Landing />
+              </MainLayout>
+            }
           />
 
-          {/* Redirect any unknown route to Home */}
-          <Route path="*" element={<Navigate to="/" />} />
+          {/* Login page handles BOTH
+              Sign In and Sign Up */}
+          <Route
+            path="/login"
+            element={
+              <MainLayout>
+                <Login />
+              </MainLayout>
+            }
+          />
+
+          <Route
+            path="/charities"
+            element={
+              <MainLayout>
+                <Charities />
+              </MainLayout>
+            }
+          />
+
+          {/* =========================
+              SUBSCRIBER ROUTES
+          ========================= */}
+
+          <Route
+            path="/dashboard"
+            element={
+              <SubscriberRoute>
+                <MainLayout>
+                  <Dashboard />
+                </MainLayout>
+              </SubscriberRoute>
+            }
+          />
+
+          {/* =========================
+              ADMIN ROUTES
+          ========================= */}
+
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminRoute>
+                <AdminLayout>
+                  <div className="text-2xl font-black">
+                    Admin Overview Content
+                  </div>
+                </AdminLayout>
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/admin/draws"
+            element={
+              <AdminRoute>
+                <AdminLayout>
+                  <DrawMgmt />
+                </AdminLayout>
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminLayout>
+                  <UserMgmt />
+                </AdminLayout>
+              </AdminRoute>
+            }
+          />
+
+          {/* =========================
+              UNKNOWN ROUTES
+          ========================= */}
+
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
+
         </Routes>
       </Router>
     </AuthProvider>
